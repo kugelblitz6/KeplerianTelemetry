@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Keplerian Telemetry</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0e1a;
+      color: #c8d8f0;
+      font-family: "Courier New", monospace;
+      font-size: 13px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 24px;
+      border-bottom: 1px solid #1e3050;
+      background: #0d1220;
+    }
+
+    header h1 {
+      font-size: 16px;
+      font-weight: normal;
+      letter-spacing: 0.12em;
+      color: #7eb8f7;
+      text-transform: uppercase;
+    }
+
+    #status {
+      margin-left: auto;
+      font-size: 11px;
+      color: #4a6a90;
+    }
+
+    #status.ok::before  { content: "● "; color: #3ddc84; }
+    #status.err::before { content: "● "; color: #e05555; }
+
+    main { padding: 20px 24px; }
+
+    #summary {
+      display: flex;
+      gap: 24px;
+      margin-bottom: 20px;
+    }
+
+    .stat {
+      background: #0d1220;
+      border: 1px solid #1e3050;
+      border-radius: 4px;
+      padding: 10px 18px;
+      min-width: 120px;
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: #4a6a90;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: 4px;
+    }
+
+    .stat-value {
+      font-size: 22px;
+      color: #7eb8f7;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    thead th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #4a6a90;
+      border-bottom: 1px solid #1e3050;
+      white-space: nowrap;
+    }
+
+    tbody tr {
+      border-bottom: 1px solid #111825;
+      transition: background 0.15s;
+    }
+
+    tbody tr:hover { background: #111d2e; }
+
+    tbody td {
+      padding: 8px 12px;
+      white-space: nowrap;
+    }
+
+    .type-badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 3px;
+      font-size: 11px;
+      background: #1a2a44;
+      color: #7eb8f7;
+      border: 1px solid #2a4060;
+    }
+
+    .num { color: #9fd9b4; font-variant-numeric: tabular-nums; }
+    .dim { color: #4a6a90; }
+
+    #empty {
+      text-align: center;
+      padding: 60px 0;
+      color: #2a4060;
+    }
+
+    #updated-at {
+      font-size: 11px;
+      color: #2a4060;
+      margin-top: 16px;
+      text-align: right;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Keplerian Telemetry</h1>
+    <div id="status">Connecting…</div>
+  </header>
+
+  <main>
+    <div id="summary">
+      <div class="stat">
+        <div class="stat-label">Objects</div>
+        <div class="stat-value" id="count">—</div>
+      </div>
+    </div>
+
+    <table id="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Name</th>
+          <th>Type</th>
+          <th>Parent ID</th>
+          <th>Pos X</th>
+          <th>Pos Y</th>
+          <th>Pos Z</th>
+          <th>Vel X</th>
+          <th>Vel Y</th>
+          <th>Vel Z</th>
+          <th>Updated</th>
+        </tr>
+      </thead>
+      <tbody id="tbody"></tbody>
+    </table>
+
+    <div id="empty" style="display:none">No telemetry data received yet.</div>
+    <div id="updated-at"></div>
+  </main>
+
+  <script>
+    const POLL_MS = 1000;
+
+    const statusEl  = document.getElementById("status");
+    const countEl   = document.getElementById("count");
+    const tbodyEl   = document.getElementById("tbody");
+    const emptyEl   = document.getElementById("empty");
+    const tableEl   = document.getElementById("table");
+    const updatedEl = document.getElementById("updated-at");
+
+    function fmt(n) {
+      if (n == null) return '<span class="dim">—</span>';
+      return `<span class="num">${Number(n).toFixed(3)}</span>`;
+    }
+
+    function timeAgo(iso) {
+      if (!iso) return '<span class="dim">—</span>';
+      const sec = Math.round((Date.now() - new Date(iso)) / 1000);
+      if (sec < 2)  return '<span class="num">now</span>';
+      if (sec < 60) return `<span class="num">${sec}s ago</span>`;
+      return `<span class="num">${Math.floor(sec/60)}m ago</span>`;
+    }
+
+    function render(objects) {
+      countEl.textContent = objects.length;
+
+      if (objects.length === 0) {
+        tableEl.style.display = "none";
+        emptyEl.style.display = "block";
+        return;
+      }
+
+      tableEl.style.display = "table";
+      emptyEl.style.display = "none";
+
+      tbodyEl.innerHTML = objects.map(o => `
+        <tr>
+          <td>${o.id ?? ""}</td>
+          <td>${o.name ?? '<span class="dim">—</span>'}</td>
+          <td>${o.type ?? '<span class="dim">—</span>'}</td>
+          <td>${o.parentId ?? '<span class="dim">—</span>'}</td>
+          <td>${fmt(o.position?.x)}</td>
+          <td>${fmt(o.position?.y)}</td>
+          <td>${fmt(o.position?.z)}</td>
+          <td>${fmt(o.velocity?.x)}</td>
+          <td>${fmt(o.velocity?.y)}</td>
+          <td>${fmt(o.velocity?.z)}</td>
+          <td>${timeAgo(o.updatedAt)}</td>
+        </tr>
+      `).join("");
+
+      updatedEl.textContent = "Last fetch: " + new Date().toLocaleTimeString();
+    }
+
+    async function poll() {
+      try {
+        const res = await fetch("/api/objects");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        statusEl.className = "ok";
+        statusEl.textContent = "Live";
+        render(data);
+      } catch (e) {
+        statusEl.className = "err";
+        statusEl.textContent = e.message;
+      }
+    }
+
+    poll();
+    setInterval(poll, POLL_MS);
+  </script>
+</body>
+</html>
