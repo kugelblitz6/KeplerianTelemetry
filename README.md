@@ -6,11 +6,15 @@ mvn package -P bundle
 
 mvn package -P bundle -DskipTests
 
-mvn package -P bundle -DskipTests
-
 
 ### 開発環境での実行方法
 mvn spring-boot:run
+
+
+http://localhost:8080/
+
+ws://localhost:8080/ksd 
+
 
 
 

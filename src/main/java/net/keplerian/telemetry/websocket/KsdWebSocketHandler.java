@@ -16,13 +16,18 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.time.Instant;
+import java.util.regex.Pattern;
 
 @Component
 public class KsdWebSocketHandler extends TextWebSocketHandler {
 
     private static final Logger log = LoggerFactory.getLogger(KsdWebSocketHandler.class);
 
-    private static final String QUERY_OBJECTS = "{\"type\":\"queryObjects\"}";
+    private static final String QUERY_OBJECTS = "{\"messageType\":\"QueryObjects\"}";
+
+    // -nan(ind) / nan / -inf など C++ 非数値リテラルを null に置換する。文字列値の内側には一致しない
+    private static final Pattern NON_NUMERIC_PATTERN =
+            Pattern.compile("(?<![\"\\w])-?(?:nan|inf(?:inity)?)(?:\\([^)]*\\))?(?![\"\\w])", Pattern.CASE_INSENSITIVE);
 
     private final ObjectMapper objectMapper;
     private final TelemetryStore store;
@@ -40,14 +45,21 @@ public class KsdWebSocketHandler extends TextWebSocketHandler {
     }
 
     @Override
-    protected void handleTextMessage(@NonNull WebSocketSession session, @NonNull TextMessage message) throws Exception {
-        JsonNode root = objectMapper.readTree(message.getPayload());
+    protected void handleTextMessage(@NonNull WebSocketSession session, @NonNull TextMessage message) {
+        try {
+            log.debug("Raw payload: {}", message.getPayload());
+            String sanitized = NON_NUMERIC_PATTERN.matcher(message.getPayload()).replaceAll("null");
+            JsonNode root = objectMapper.readTree(sanitized);
 
-        String messageType = root.path("messageType").asText("");
-        switch (messageType) {
-            case "Telemetry"   -> handleTelemetry(objectMapper.treeToValue(root, TelemetryMessage.class));
-            case "ObjectList"  -> handleObjectInfo(objectMapper.treeToValue(root, ObjectInfoMessage.class));
-            default            -> log.warn("Unknown messageType '{}' from {}", messageType, session.getId());
+            String messageType = root.path("messageType").asText("");
+            switch (messageType) {
+                case "Telemetry"  -> handleTelemetry(objectMapper.treeToValue(root, TelemetryMessage.class));
+                case "ObjectList" -> handleObjectInfo(objectMapper.treeToValue(root, ObjectInfoMessage.class));
+                default           -> log.warn("Unknown messageType '{}' from {}", messageType, session.getId());
+            }
+        } catch (Exception e) {
+            log.error("Failed to process message from {}: {}", session.getId(), e.getMessage());
+            log.error("Failing payload: {}", message.getPayload());
         }
     }
 
