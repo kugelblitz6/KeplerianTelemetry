@@ -16,6 +16,8 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.time.Instant;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.regex.Pattern;
 
 @Component
@@ -24,6 +26,7 @@ public class KsdWebSocketHandler extends TextWebSocketHandler {
     private static final Logger log = LoggerFactory.getLogger(KsdWebSocketHandler.class);
 
     private static final String QUERY_OBJECTS = "{\"messageType\":\"QueryObjects\"}";
+    private static final String QUERY_TELEMETRY = "{\"messageType\":\"QueryTelemetry\"}";
 
     // -nan(ind) / nan / -inf など C++ 非数値リテラルを null に置換する。文字列値の内側には一致しない
     private static final Pattern NON_NUMERIC_PATTERN =
@@ -31,6 +34,7 @@ public class KsdWebSocketHandler extends TextWebSocketHandler {
 
     private final ObjectMapper objectMapper;
     private final TelemetryStore store;
+    private final Set<WebSocketSession> sessions = new CopyOnWriteArraySet<>();
 
     public KsdWebSocketHandler(ObjectMapper objectMapper, TelemetryStore store) {
         this.objectMapper = objectMapper;
@@ -39,9 +43,23 @@ public class KsdWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionEstablished(@NonNull WebSocketSession session) throws Exception {
+        sessions.add(session);
         log.info("KSD connected: {}", session.getId());
         session.sendMessage(new TextMessage(QUERY_OBJECTS));
-        log.debug("Sent queryObjects to {}", session.getId());
+        log.debug("Sent QueryObjects to {}", session.getId());
+        requestObjectList();
+    }
+
+    public void requestObjectList() {
+        for (WebSocketSession session : sessions) {
+            if (!session.isOpen()) continue;
+            try {
+                session.sendMessage(new TextMessage(QUERY_TELEMETRY));
+                log.debug("Sent QueryTelemetry (scheduled) to {}", session.getId());
+            } catch (Exception e) {
+                log.warn("Failed to send QueryTelemetry to {}: {}", session.getId(), e.getMessage());
+            }
+        }
     }
 
     @Override
@@ -80,6 +98,7 @@ public class KsdWebSocketHandler extends TextWebSocketHandler {
 
     @Override
     public void afterConnectionClosed(@NonNull WebSocketSession session, @NonNull CloseStatus status) {
+        sessions.remove(session);
         log.info("KSD disconnected: {} ({})", session.getId(), status);
     }
 

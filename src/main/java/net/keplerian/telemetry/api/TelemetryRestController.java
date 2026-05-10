@@ -2,6 +2,7 @@ package net.keplerian.telemetry.api;
 
 import net.keplerian.telemetry.model.SpaceObject;
 import net.keplerian.telemetry.store.TelemetryStore;
+import net.keplerian.telemetry.websocket.KsdWebSocketHandler;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -15,13 +16,16 @@ import java.util.Collection;
 public class TelemetryRestController {
 
     private final TelemetryStore store;
+    private final KsdWebSocketHandler ksdWebSocketHandler;
 
-    public TelemetryRestController(TelemetryStore store) {
+    public TelemetryRestController(TelemetryStore store, KsdWebSocketHandler ksdWebSocketHandler) {
         this.store = store;
+        this.ksdWebSocketHandler = ksdWebSocketHandler;
     }
 
     @GetMapping("/objects")
     public Collection<SpaceObject> getAll() {
+        ksdWebSocketHandler.requestObjectList();
         return store.getAll();
     }
 
