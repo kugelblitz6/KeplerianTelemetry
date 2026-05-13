@@ -122,6 +122,33 @@
       margin-top: 16px;
       text-align: right;
     }
+
+    #filter-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+
+    #filter-bar label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #4a6a90;
+    }
+
+    #type-filter {
+      background: #0d1220;
+      color: #c8d8f0;
+      border: 1px solid #2a4060;
+      border-radius: 3px;
+      padding: 4px 10px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    #type-filter:focus { outline: 1px solid #7eb8f7; }
   </style>
 </head>
 <body>
@@ -138,6 +165,11 @@
       </div>
     </div>
 
+    <div id="filter-bar">
+      <label for="type-filter">Type</label>
+      <select id="type-filter"><option value="">All</option></select>
+    </div>
+
     <table id="table">
       <thead>
         <tr>
@@ -151,6 +183,13 @@
           <th>Vel X</th>
           <th>Vel Y</th>
           <th>Vel Z</th>
+          <th>Epoch</th>
+          <th>SMA (m)</th>
+          <th>Ecc</th>
+          <th>Inc (°)</th>
+          <th>RAAN (°)</th>
+          <th>ArgP (°)</th>
+          <th>MA (°)</th>
           <th>Updated</th>
         </tr>
       </thead>
@@ -164,16 +203,34 @@
   <script>
     const POLL_MS = 10000;
 
-    const statusEl  = document.getElementById("status");
-    const countEl   = document.getElementById("count");
-    const tbodyEl   = document.getElementById("tbody");
-    const emptyEl   = document.getElementById("empty");
-    const tableEl   = document.getElementById("table");
-    const updatedEl = document.getElementById("updated-at");
+    const statusEl     = document.getElementById("status");
+    const countEl      = document.getElementById("count");
+    const tbodyEl      = document.getElementById("tbody");
+    const emptyEl      = document.getElementById("empty");
+    const tableEl      = document.getElementById("table");
+    const updatedEl    = document.getElementById("updated-at");
+    const typeFilterEl = document.getElementById("type-filter");
+
+    let allObjects = [];
 
     function fmt(n) {
       if (n == null) return '<span class="dim">—</span>';
       return `<span class="num">${Number(n).toFixed(3)}</span>`;
+    }
+
+    function fmtDeg(n) {
+      if (n == null) return '<span class="dim">—</span>';
+      return `<span class="num">${Number(n).toFixed(4)}</span>`;
+    }
+
+    function fmtEcc(n) {
+      if (n == null) return '<span class="dim">—</span>';
+      return `<span class="num">${Number(n).toFixed(7)}</span>`;
+    }
+
+    function fmtEpoch(ep) {
+      if (ep == null) return '<span class="dim">—</span>';
+      return `<span class="num">${new Date(ep * 1000).toISOString().replace("T", " ").slice(0, 19)}</span>`;
     }
 
     function timeAgo(iso) {
@@ -184,8 +241,20 @@
       return `<span class="num">${Math.floor(sec/60)}m ago</span>`;
     }
 
-    function render(objects) {
-      objects.sort((a, b) => a.id - b.id);
+    function updateTypeOptions(objects) {
+      const current = typeFilterEl.value;
+      const types = [...new Set(objects.map(o => o.type).filter(Boolean))].sort();
+      typeFilterEl.innerHTML = '<option value="">All</option>' +
+        types.map(t => `<option value="${t}"${t === current ? " selected" : ""}>${t}</option>`).join("");
+    }
+
+    function applyFilter() {
+      const selected = typeFilterEl.value;
+      const filtered = selected ? allObjects.filter(o => o.type === selected) : allObjects;
+      renderTable(filtered);
+    }
+
+    function renderTable(objects) {
       countEl.textContent = objects.length;
 
       if (objects.length === 0) {
@@ -203,18 +272,33 @@
           <td>${o.name ?? '<span class="dim">—</span>'}</td>
           <td>${o.type ?? '<span class="dim">—</span>'}</td>
           <td>${o.parentId ?? '<span class="dim">—</span>'}</td>
-          <td>${fmt(o.position?.x)}</td>
-          <td>${fmt(o.position?.y)}</td>
-          <td>${fmt(o.position?.z)}</td>
-          <td>${fmt(o.velocity?.x)}</td>
-          <td>${fmt(o.velocity?.y)}</td>
-          <td>${fmt(o.velocity?.z)}</td>
+          <td>${fmt(o.cart?.position?.x)}</td>
+          <td>${fmt(o.cart?.position?.y)}</td>
+          <td>${fmt(o.cart?.position?.z)}</td>
+          <td>${fmt(o.cart?.velocity?.x)}</td>
+          <td>${fmt(o.cart?.velocity?.y)}</td>
+          <td>${fmt(o.cart?.velocity?.z)}</td>
+          <td>${fmtEpoch(o.kep?.ep)}</td>
+          <td>${fmt(o.kep?.a)}</td>
+          <td>${fmtEcc(o.kep?.e)}</td>
+          <td>${fmtDeg(o.kep?.i)}</td>
+          <td>${fmtDeg(o.kep?.raan)}</td>
+          <td>${fmtDeg(o.kep?.argp)}</td>
+          <td>${fmtDeg(o.kep?.ma)}</td>
           <td>${timeAgo(o.updatedAt)}</td>
         </tr>
       `).join("");
+    }
 
+    function render(objects) {
+      objects.sort((a, b) => a.id - b.id);
+      allObjects = objects;
+      updateTypeOptions(objects);
+      applyFilter();
       updatedEl.textContent = "Last fetch: " + new Date().toLocaleTimeString();
     }
+
+    typeFilterEl.addEventListener("change", applyFilter);
 
     async function poll() {
       try {

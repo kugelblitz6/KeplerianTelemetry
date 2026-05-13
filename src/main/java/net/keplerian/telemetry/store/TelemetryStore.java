@@ -15,11 +15,13 @@ public class TelemetryStore {
 
     private final Map<Long, SpaceObject> objects = new ConcurrentHashMap<>();
 
-    public void putTelemetry(long id, net.keplerian.telemetry.model.Vector3 position,
-                             net.keplerian.telemetry.model.Vector3 velocity, java.time.Instant updatedAt) {
+    public void putTelemetry(long id,
+                             net.keplerian.telemetry.model.CartesianElements cart,
+                             net.keplerian.telemetry.model.KeplerianElements kep,
+                             java.time.Instant updatedAt) {
         objects.merge(id,
-                new SpaceObject(id, null, null, null, position, velocity, updatedAt),
-                (existing, incoming) -> existing.withTelemetry(position, velocity, updatedAt));
+                new SpaceObject(id, null, null, null, cart, kep, updatedAt),
+                (existing, incoming) -> existing.withTelemetry(cart, kep, updatedAt));
     }
 
     public void putInfo(SpaceObjectInfo info) {
