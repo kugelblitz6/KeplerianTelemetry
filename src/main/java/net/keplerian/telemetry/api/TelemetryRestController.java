@@ -1,6 +1,7 @@
 package net.keplerian.telemetry.api;
 
 import net.keplerian.telemetry.model.SpaceObject;
+import net.keplerian.telemetry.model.TelemetryResponse;
 import net.keplerian.telemetry.store.TelemetryStore;
 import net.keplerian.telemetry.websocket.KsdWebSocketHandler;
 import org.springframework.http.ResponseEntity;
@@ -8,8 +9,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Collection;
 
 @RestController
 @RequestMapping("/api")
@@ -24,9 +23,9 @@ public class TelemetryRestController {
     }
 
     @GetMapping("/objects")
-    public Collection<SpaceObject> getAll() {
+    public TelemetryResponse getAll() {
         ksdWebSocketHandler.requestObjectList();
-        return store.getAll();
+        return new TelemetryResponse(store.getCurrentTime(), store.getAll());
     }
 
     @GetMapping("/objects/{id}")

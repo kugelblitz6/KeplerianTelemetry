@@ -69,6 +69,10 @@
       color: #7eb8f7;
     }
 
+    .stat-value.time {
+      font-size: 14px;
+    }
+
     table {
       width: 100%;
       border-collapse: collapse;
@@ -116,13 +120,6 @@
       color: #2a4060;
     }
 
-    #updated-at {
-      font-size: 11px;
-      color: #2a4060;
-      margin-top: 16px;
-      text-align: right;
-    }
-
     #filter-bar {
       display: flex;
       align-items: center;
@@ -163,6 +160,10 @@
         <div class="stat-label">Objects</div>
         <div class="stat-value" id="count">—</div>
       </div>
+      <div class="stat">
+        <div class="stat-label">Current Time</div>
+        <div class="stat-value time" id="current-time">—</div>
+      </div>
     </div>
 
     <div id="filter-bar">
@@ -190,26 +191,24 @@
           <th>RAAN (°)</th>
           <th>ArgP (°)</th>
           <th>MA (°)</th>
-          <th>Updated</th>
         </tr>
       </thead>
       <tbody id="tbody"></tbody>
     </table>
 
     <div id="empty" style="display:none">No telemetry data received yet.</div>
-    <div id="updated-at"></div>
   </main>
 
   <script>
     const POLL_MS = 10000;
 
-    const statusEl     = document.getElementById("status");
-    const countEl      = document.getElementById("count");
-    const tbodyEl      = document.getElementById("tbody");
-    const emptyEl      = document.getElementById("empty");
-    const tableEl      = document.getElementById("table");
-    const updatedEl    = document.getElementById("updated-at");
-    const typeFilterEl = document.getElementById("type-filter");
+    const statusEl      = document.getElementById("status");
+    const countEl       = document.getElementById("count");
+    const currentTimeEl = document.getElementById("current-time");
+    const tbodyEl       = document.getElementById("tbody");
+    const emptyEl       = document.getElementById("empty");
+    const tableEl       = document.getElementById("table");
+    const typeFilterEl  = document.getElementById("type-filter");
 
     let allObjects = [];
 
@@ -231,14 +230,6 @@
     function fmtEpoch(ep) {
       if (ep == null) return '<span class="dim">—</span>';
       return `<span class="num">${new Date(ep * 1000).toISOString().replace("T", " ").slice(0, 19)}</span>`;
-    }
-
-    function timeAgo(iso) {
-      if (!iso) return '<span class="dim">—</span>';
-      const sec = Math.round((Date.now() - new Date(iso)) / 1000);
-      if (sec < 2)  return '<span class="num">now</span>';
-      if (sec < 60) return `<span class="num">${sec}s ago</span>`;
-      return `<span class="num">${Math.floor(sec/60)}m ago</span>`;
     }
 
     function updateTypeOptions(objects) {
@@ -285,17 +276,18 @@
           <td>${fmtDeg(o.kep?.raan)}</td>
           <td>${fmtDeg(o.kep?.argp)}</td>
           <td>${fmtDeg(o.kep?.ma)}</td>
-          <td>${timeAgo(o.updatedAt)}</td>
         </tr>
       `).join("");
     }
 
-    function render(objects) {
-      objects.sort((a, b) => a.id - b.id);
+    function render(data) {
+      const objects = (data.objects ?? []).slice().sort((a, b) => a.id - b.id);
+      if (data.currentTime != null) {
+        currentTimeEl.textContent = new Date(data.currentTime * 1000).toISOString().replace("T", " ").slice(0, 19) + " UTC";
+      }
       allObjects = objects;
       updateTypeOptions(objects);
       applyFilter();
-      updatedEl.textContent = "Last fetch: " + new Date().toLocaleTimeString();
     }
 
     typeFilterEl.addEventListener("change", applyFilter);

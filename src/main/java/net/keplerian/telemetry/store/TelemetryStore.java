@@ -14,19 +14,27 @@ import java.util.concurrent.ConcurrentHashMap;
 public class TelemetryStore {
 
     private final Map<Long, SpaceObject> objects = new ConcurrentHashMap<>();
+    private volatile Long currentTime = null;
+
+    public void setCurrentTime(long currentTime) {
+        this.currentTime = currentTime;
+    }
+
+    public Long getCurrentTime() {
+        return currentTime;
+    }
 
     public void putTelemetry(long id,
                              net.keplerian.telemetry.model.CartesianElements cart,
-                             net.keplerian.telemetry.model.KeplerianElements kep,
-                             java.time.Instant updatedAt) {
+                             net.keplerian.telemetry.model.KeplerianElements kep) {
         objects.merge(id,
-                new SpaceObject(id, null, null, null, cart, kep, updatedAt),
-                (existing, incoming) -> existing.withTelemetry(cart, kep, updatedAt));
+                new SpaceObject(id, null, null, null, cart, kep),
+                (existing, incoming) -> existing.withTelemetry(cart, kep));
     }
 
     public void putInfo(SpaceObjectInfo info) {
         objects.merge(info.id(),
-                new SpaceObject(info.id(), info.name(), info.type(), info.parentId(), null, null, null),
+                new SpaceObject(info.id(), info.name(), info.type(), info.parentId(), null, null),
                 (existing, incoming) -> existing.withInfo(info.name(), info.type(), info.parentId()));
     }
 

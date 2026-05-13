@@ -15,7 +15,6 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
-import java.time.Instant;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.regex.Pattern;
@@ -82,9 +81,9 @@ public class KsdWebSocketHandler extends TextWebSocketHandler {
     }
 
     private void handleTelemetry(TelemetryMessage msg) {
-        Instant time = Instant.ofEpochSecond(msg.currentTime());
+        store.setCurrentTime(msg.currentTime());
         for (SpaceObjectInput o : msg.spaceObjects()) {
-            store.putTelemetry(o.id(), o.cart(), o.kep(), time);
+            store.putTelemetry(o.id(), o.cart(), o.kep());
         }
         log.debug("Updated {} objects at t={}", msg.spaceObjects().size(), msg.currentTime());
     }
