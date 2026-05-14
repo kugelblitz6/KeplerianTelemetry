@@ -134,7 +134,7 @@
       color: #4a6a90;
     }
 
-    #type-filter {
+    #type-filter, #poll-interval {
       background: #0d1220;
       color: #c8d8f0;
       border: 1px solid #2a4060;
@@ -145,7 +145,7 @@
       cursor: pointer;
     }
 
-    #type-filter:focus { outline: 1px solid #7eb8f7; }
+    #type-filter:focus, #poll-interval:focus { outline: 1px solid #7eb8f7; }
   </style>
 </head>
 <body>
@@ -169,6 +169,13 @@
     <div id="filter-bar">
       <label for="type-filter">Type</label>
       <select id="type-filter"><option value="">All</option></select>
+      <label for="poll-interval" style="margin-left:16px;">Interval</label>
+      <select id="poll-interval">
+        <option value="1000">1 sec</option>
+        <option value="3000">3 sec</option>
+        <option value="5000">5 sec</option>
+        <option value="10000" selected>10 sec</option>
+      </select>
     </div>
 
     <table id="table">
@@ -200,15 +207,16 @@
   </main>
 
   <script>
-    const POLL_MS = 10000;
+    const statusEl       = document.getElementById("status");
+    const countEl        = document.getElementById("count");
+    const currentTimeEl  = document.getElementById("current-time");
+    const tbodyEl        = document.getElementById("tbody");
+    const emptyEl        = document.getElementById("empty");
+    const tableEl        = document.getElementById("table");
+    const typeFilterEl   = document.getElementById("type-filter");
+    const pollIntervalEl = document.getElementById("poll-interval");
 
-    const statusEl      = document.getElementById("status");
-    const countEl       = document.getElementById("count");
-    const currentTimeEl = document.getElementById("current-time");
-    const tbodyEl       = document.getElementById("tbody");
-    const emptyEl       = document.getElementById("empty");
-    const tableEl       = document.getElementById("table");
-    const typeFilterEl  = document.getElementById("type-filter");
+    let timerId = null;
 
     let allObjects = [];
 
@@ -306,8 +314,17 @@
       }
     }
 
+    function startPolling() {
+      if (timerId !== null) clearInterval(timerId);
+      timerId = setInterval(poll, Number(pollIntervalEl.value));
+    }
+
+    pollIntervalEl.addEventListener("change", () => {
+      startPolling();
+    });
+
     poll();
-    setInterval(poll, POLL_MS);
+    startPolling();
   </script>
 </body>
 </html>
