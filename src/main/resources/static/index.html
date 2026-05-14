@@ -9,122 +9,112 @@
 
     body {
       background: #0a0e1a;
-      color: #c8d8f0;
+      color: #3ddc84;
       font-family: "Courier New", monospace;
       font-size: 13px;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
+    /* ── Header ── */
     header {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 14px 24px;
+      padding: 10px 20px;
       border-bottom: 1px solid #1e3050;
-      background: #0d1220;
+      background: #0a0e1a;
+      flex-shrink: 0;
+      gap: 12px;
     }
 
     header h1 {
-      font-size: 16px;
+      font-size: 15px;
       font-weight: normal;
-      letter-spacing: 0.12em;
+      letter-spacing: 0.15em;
       color: #7eb8f7;
       text-transform: uppercase;
     }
 
-    #status {
-      margin-left: auto;
-      font-size: 11px;
+    #time-box {
+      margin: 0 auto;
+      border: 1px solid #1e3050;
+      padding: 5px 18px;
+      text-align: center;
+    }
+
+    #time-label {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: #4a6a90;
+      margin-bottom: 2px;
+    }
+
+    #current-time {
+      font-size: 13px;
+      color: #7eb8f7;
+      letter-spacing: 0.05em;
+    }
+
+    #interval-box {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #interval-label {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
       color: #4a6a90;
     }
 
+    #poll-interval {
+      background: #0d1220;
+      color: #c8d8f0;
+      border: 1px solid #2a4060;
+      border-radius: 3px;
+      padding: 4px 8px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    #poll-interval:focus { outline: 1px solid #7eb8f7; }
+
+    #status {
+      font-size: 11px;
+      color: #4a6a90;
+    }
     #status.ok::before  { content: "● "; color: #3ddc84; }
     #status.err::before { content: "● "; color: #e05555; }
 
-    main { padding: 20px 24px; }
-
-    #summary {
+    /* ── Layout ── */
+    .layout {
       display: flex;
-      gap: 24px;
-      margin-bottom: 20px;
+      flex: 1;
+      overflow: hidden;
     }
 
-    .stat {
-      background: #0d1220;
-      border: 1px solid #1e3050;
-      border-radius: 4px;
-      padding: 10px 18px;
-      min-width: 120px;
-    }
-
-    .stat-label {
-      font-size: 10px;
-      color: #4a6a90;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      margin-bottom: 4px;
-    }
-
-    .stat-value {
-      font-size: 22px;
-      color: #7eb8f7;
-    }
-
-    .stat-value.time {
-      font-size: 14px;
-    }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    thead th {
-      text-align: left;
-      padding: 8px 12px;
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.1em;
-      color: #4a6a90;
-      border-bottom: 1px solid #1e3050;
-      white-space: nowrap;
-    }
-
-    tbody tr {
-      border-bottom: 1px solid #111825;
-      transition: background 0.15s;
-    }
-
-    tbody tr:hover { background: #111d2e; }
-
-    tbody td {
-      padding: 8px 12px;
-      white-space: nowrap;
-    }
-
-    .type-badge {
-      display: inline-block;
-      padding: 2px 7px;
-      border-radius: 3px;
-      font-size: 11px;
-      background: #1a2a44;
-      color: #7eb8f7;
-      border: 1px solid #2a4060;
-    }
-
-    .num { color: #9fd9b4; font-variant-numeric: tabular-nums; }
-    .dim { color: #4a6a90; }
-
-    #empty {
-      text-align: center;
-      padding: 60px 0;
-      color: #2a4060;
+    /* ── Sidebar ── */
+    #sidebar {
+      width: 160px;
+      flex-shrink: 0;
+      border-right: 1px solid #1e3050;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
     }
 
     #filter-bar {
+      padding: 8px 12px;
+      border-bottom: 1px solid #1e3050;
       display: flex;
       align-items: center;
-      gap: 10px;
-      margin-bottom: 14px;
+      gap: 8px;
+      flex-shrink: 0;
     }
 
     #filter-bar label {
@@ -134,42 +124,108 @@
       color: #4a6a90;
     }
 
-    #type-filter, #poll-interval {
+    #type-filter {
       background: #0d1220;
       color: #c8d8f0;
       border: 1px solid #2a4060;
       border-radius: 3px;
-      padding: 4px 10px;
+      padding: 3px 6px;
       font-family: inherit;
-      font-size: 12px;
+      font-size: 11px;
       cursor: pointer;
+      flex: 1;
+      min-width: 0;
     }
 
-    #type-filter:focus, #poll-interval:focus { outline: 1px solid #7eb8f7; }
+    #type-filter:focus { outline: 1px solid #7eb8f7; }
+
+    #body-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 4px 0;
+    }
+
+    #body-list::-webkit-scrollbar { width: 4px; }
+    #body-list::-webkit-scrollbar-track { background: transparent; }
+    #body-list::-webkit-scrollbar-thumb { background: #1e3050; border-radius: 2px; }
+
+    .body-item {
+      padding: 5px 14px;
+      cursor: pointer;
+      color: #4a6a90;
+      transition: color 0.1s;
+      white-space: nowrap;
+    }
+
+    .body-item:hover { color: #7eb8b4; }
+
+    .body-item.selected { color: #3ddc84; }
+
+    /* ── Content ── */
+    #content {
+      flex: 1;
+      padding: 20px;
+      overflow-y: auto;
+      display: flex;
+      justify-content: flex-end;
+      align-items: flex-start;
+    }
+
+    /* ── Detail panel ── */
+    #detail-panel {
+      width: 280px;
+      border: 1px solid #1e3050;
+      background: #080c14;
+      padding: 16px 20px;
+      display: none;
+    }
+
+    #detail-name {
+      font-size: 17px;
+      color: #3ddc84;
+      text-align: center;
+      margin-bottom: 14px;
+      letter-spacing: 0.1em;
+    }
+
+    .section-title {
+      font-size: 11px;
+      color: #3ddc84;
+      letter-spacing: 0.08em;
+      margin-top: 14px;
+      margin-bottom: 6px;
+    }
+
+    .field-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 2px 0;
+    }
+
+    .field-label {
+      font-size: 11px;
+      color: #2a7a50;
+      letter-spacing: 0.04em;
+    }
+
+    .field-value {
+      font-size: 11px;
+      color: #3ddc84;
+      font-variant-numeric: tabular-nums;
+      margin-left: 8px;
+    }
   </style>
 </head>
 <body>
   <header>
     <h1>Keplerian Telemetry</h1>
-    <div id="status">Connecting…</div>
-  </header>
-
-  <main>
-    <div id="summary">
-      <div class="stat">
-        <div class="stat-label">Objects</div>
-        <div class="stat-value" id="count">—</div>
-      </div>
-      <div class="stat">
-        <div class="stat-label">Current Time</div>
-        <div class="stat-value time" id="current-time">—</div>
-      </div>
+    <div id="time-box">
+      <div id="time-label">Current Time</div>
+      <div id="current-time">—</div>
     </div>
-
-    <div id="filter-bar">
-      <label for="type-filter">Type</label>
-      <select id="type-filter"><option value="">All</option></select>
-      <label for="poll-interval" style="margin-left:16px;">Interval</label>
+    <div id="interval-box">
+      <span id="interval-label">Interval</span>
       <select id="poll-interval">
         <option value="1000">1 sec</option>
         <option value="3000">3 sec</option>
@@ -177,67 +233,101 @@
         <option value="10000" selected>10 sec</option>
       </select>
     </div>
+    <div id="status">Connecting…</div>
+  </header>
 
-    <table id="table">
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Name</th>
-          <th>Type</th>
-          <th>Parent ID</th>
-          <th>Pos X</th>
-          <th>Pos Y</th>
-          <th>Pos Z</th>
-          <th>Vel X</th>
-          <th>Vel Y</th>
-          <th>Vel Z</th>
-          <th>Epoch</th>
-          <th>SMA (m)</th>
-          <th>Ecc</th>
-          <th>Inc (°)</th>
-          <th>RAAN (°)</th>
-          <th>ArgP (°)</th>
-          <th>MA (°)</th>
-        </tr>
-      </thead>
-      <tbody id="tbody"></tbody>
-    </table>
+  <div class="layout">
+    <div id="sidebar">
+      <div id="filter-bar">
+        <label for="type-filter">Type</label>
+        <select id="type-filter"><option value="">All</option></select>
+      </div>
+      <div id="body-list"></div>
+    </div>
 
-    <div id="empty" style="display:none">No telemetry data received yet.</div>
-  </main>
+    <div id="content">
+      <div id="detail-panel">
+        <div id="detail-name"></div>
+
+        <div class="section-title">Keplerian Elements</div>
+        <div class="field-row">
+          <span class="field-label">Epoch</span>
+          <span class="field-value" id="d-epoch">—</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">SMA</span>
+          <span class="field-value" id="d-sma">—</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">ECC</span>
+          <span class="field-value" id="d-ecc">—</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">INC  (°)</span>
+          <span class="field-value" id="d-inc">—</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">RAAN (°)</span>
+          <span class="field-value" id="d-raan">—</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">ARGP (°)</span>
+          <span class="field-value" id="d-argp">—</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">MA   (°)</span>
+          <span class="field-value" id="d-ma">—</span>
+        </div>
+
+        <div class="section-title">Cartesian Elements</div>
+        <div class="field-row">
+          <span class="field-label">POS X</span>
+          <span class="field-value" id="d-px">—</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">POS Y</span>
+          <span class="field-value" id="d-py">—</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">POS Z</span>
+          <span class="field-value" id="d-pz">—</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">VEL X</span>
+          <span class="field-value" id="d-vx">—</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">VEL Y</span>
+          <span class="field-value" id="d-vy">—</span>
+        </div>
+        <div class="field-row">
+          <span class="field-label">VEL Z</span>
+          <span class="field-value" id="d-vz">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script>
     const statusEl       = document.getElementById("status");
-    const countEl        = document.getElementById("count");
     const currentTimeEl  = document.getElementById("current-time");
-    const tbodyEl        = document.getElementById("tbody");
-    const emptyEl        = document.getElementById("empty");
-    const tableEl        = document.getElementById("table");
+    const bodyListEl     = document.getElementById("body-list");
     const typeFilterEl   = document.getElementById("type-filter");
     const pollIntervalEl = document.getElementById("poll-interval");
+    const detailPanelEl  = document.getElementById("detail-panel");
 
-    let timerId = null;
-
+    let timerId    = null;
     let allObjects = [];
+    let selectedId = null;
 
-    function fmt(n) {
-      if (n == null) return '<span class="dim">—</span>';
-      return `<span class="num">${Number(n).toFixed(3)}</span>`;
-    }
-
-    function fmtDeg(n) {
-      if (n == null) return '<span class="dim">—</span>';
-      return `<span class="num">${Number(n).toFixed(4)}</span>`;
-    }
-
-    function fmtEcc(n) {
-      if (n == null) return '<span class="dim">—</span>';
-      return `<span class="num">${Number(n).toFixed(7)}</span>`;
+    function fmtNum(n, digits) {
+      if (n == null) return "—";
+      return Number(n).toFixed(digits);
     }
 
     function fmtEpoch(ep) {
-      if (ep == null) return '<span class="dim">—</span>';
-      return `<span class="num">${new Date(ep * 1000).toISOString().replace("T", " ").slice(0, 19)}</span>`;
+      if (ep == null) return "—";
+      return new Date(ep * 1000).toISOString().replace("T", " ").slice(0, 19);
     }
 
     function updateTypeOptions(objects) {
@@ -247,58 +337,61 @@
         types.map(t => `<option value="${t}"${t === current ? " selected" : ""}>${t}</option>`).join("");
     }
 
-    function applyFilter() {
-      const selected = typeFilterEl.value;
-      const filtered = selected ? allObjects.filter(o => o.type === selected) : allObjects;
-      renderTable(filtered);
+    function getFiltered() {
+      const sel = typeFilterEl.value;
+      return sel ? allObjects.filter(o => o.type === sel) : allObjects;
     }
 
-    function renderTable(objects) {
-      countEl.textContent = objects.length;
+    function renderList() {
+      const filtered = getFiltered();
+      bodyListEl.innerHTML = filtered.map(o => {
+        const cls = o.id === selectedId ? " selected" : "";
+        return `<div class="body-item${cls}" data-id="${o.id}">${o.name ?? o.id}</div>`;
+      }).join("");
 
-      if (objects.length === 0) {
-        tableEl.style.display = "none";
-        emptyEl.style.display = "block";
-        return;
-      }
+      bodyListEl.querySelectorAll(".body-item").forEach(el => {
+        el.addEventListener("click", () => {
+          selectedId = Number(el.dataset.id);
+          renderList();
+          showDetail();
+        });
+      });
+    }
 
-      tableEl.style.display = "table";
-      emptyEl.style.display = "none";
+    function showDetail() {
+      const obj = allObjects.find(o => o.id === selectedId);
+      if (!obj) { detailPanelEl.style.display = "none"; return; }
 
-      tbodyEl.innerHTML = objects.map(o => `
-        <tr>
-          <td>${o.id ?? ""}</td>
-          <td>${o.name ?? '<span class="dim">—</span>'}</td>
-          <td>${o.type ?? '<span class="dim">—</span>'}</td>
-          <td>${o.parentId ?? '<span class="dim">—</span>'}</td>
-          <td>${fmt(o.cart?.pos?.x)}</td>
-          <td>${fmt(o.cart?.pos?.y)}</td>
-          <td>${fmt(o.cart?.pos?.z)}</td>
-          <td>${fmt(o.cart?.vel?.x)}</td>
-          <td>${fmt(o.cart?.vel?.y)}</td>
-          <td>${fmt(o.cart?.vel?.z)}</td>
-          <td>${fmtEpoch(o.kep?.ep)}</td>
-          <td>${fmt(o.kep?.a)}</td>
-          <td>${fmtEcc(o.kep?.e)}</td>
-          <td>${fmtDeg(o.kep?.i)}</td>
-          <td>${fmtDeg(o.kep?.raan)}</td>
-          <td>${fmtDeg(o.kep?.argp)}</td>
-          <td>${fmtDeg(o.kep?.ma)}</td>
-        </tr>
-      `).join("");
+      detailPanelEl.style.display = "block";
+      document.getElementById("detail-name").textContent = obj.name ?? obj.id;
+      document.getElementById("d-epoch").textContent = fmtEpoch(obj.kep?.ep);
+      document.getElementById("d-sma").textContent   = fmtNum(obj.kep?.a,    3);
+      document.getElementById("d-ecc").textContent   = fmtNum(obj.kep?.e,    7);
+      document.getElementById("d-inc").textContent   = fmtNum(obj.kep?.i,    4);
+      document.getElementById("d-raan").textContent  = fmtNum(obj.kep?.raan, 2);
+      document.getElementById("d-argp").textContent  = fmtNum(obj.kep?.argp, 2);
+      document.getElementById("d-ma").textContent    = fmtNum(obj.kep?.ma,   2);
+      document.getElementById("d-px").textContent    = fmtNum(obj.cart?.pos?.x, 3);
+      document.getElementById("d-py").textContent    = fmtNum(obj.cart?.pos?.y, 3);
+      document.getElementById("d-pz").textContent    = fmtNum(obj.cart?.pos?.z, 3);
+      document.getElementById("d-vx").textContent    = fmtNum(obj.cart?.vel?.x, 9);
+      document.getElementById("d-vy").textContent    = fmtNum(obj.cart?.vel?.y, 9);
+      document.getElementById("d-vz").textContent    = fmtNum(obj.cart?.vel?.z, 9);
     }
 
     function render(data) {
       const objects = (data.objects ?? []).slice().sort((a, b) => a.id - b.id);
       if (data.currentTime != null) {
-        currentTimeEl.textContent = new Date(data.currentTime * 1000).toISOString().replace("T", " ").slice(0, 19) + " UTC";
+        currentTimeEl.textContent = new Date(data.currentTime * 1000)
+          .toISOString().replace("T", " ").slice(0, 19) + " UTC";
       }
       allObjects = objects;
       updateTypeOptions(objects);
-      applyFilter();
+      renderList();
+      if (selectedId != null) showDetail();
     }
 
-    typeFilterEl.addEventListener("change", applyFilter);
+    typeFilterEl.addEventListener("change", renderList);
 
     async function poll() {
       try {
@@ -319,9 +412,7 @@
       timerId = setInterval(poll, Number(pollIntervalEl.value));
     }
 
-    pollIntervalEl.addEventListener("change", () => {
-      startPolling();
-    });
+    pollIntervalEl.addEventListener("change", startPolling);
 
     poll();
     startPolling();
