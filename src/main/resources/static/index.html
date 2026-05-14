@@ -8,23 +8,41 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      background: #0a0e1a;
+      background: #000;
       color: #3ddc84;
       font-family: "Courier New", monospace;
       font-size: 13px;
       height: 100vh;
-      display: flex;
-      flex-direction: column;
       overflow: hidden;
     }
+
+    /* ── Three.js canvas container ── */
+    #canvas-wrap {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+    }
+
+    /* ── UI overlay ── */
+    #ui {
+      position: fixed;
+      inset: 0;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      pointer-events: none;
+    }
+
+    header, #sidebar, #detail-panel { pointer-events: auto; }
 
     /* ── Header ── */
     header {
       display: flex;
       align-items: center;
       padding: 10px 20px;
-      border-bottom: 1px solid #1e3050;
-      background: #0a0e1a;
+      border-bottom: 1px solid rgba(30,48,80,0.8);
+      background: rgba(10,14,26,0.85);
+      backdrop-filter: blur(4px);
       flex-shrink: 0;
       gap: 12px;
     }
@@ -58,11 +76,7 @@
       letter-spacing: 0.05em;
     }
 
-    #interval-box {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
+    #interval-box { display: flex; align-items: center; gap: 8px; }
 
     #interval-label {
       font-size: 10px;
@@ -72,7 +86,7 @@
     }
 
     #poll-interval {
-      background: #0d1220;
+      background: rgba(13,18,32,0.9);
       color: #c8d8f0;
       border: 1px solid #2a4060;
       border-radius: 3px;
@@ -84,10 +98,7 @@
 
     #poll-interval:focus { outline: 1px solid #7eb8f7; }
 
-    #status {
-      font-size: 11px;
-      color: #4a6a90;
-    }
+    #status { font-size: 11px; color: #4a6a90; }
     #status.ok::before  { content: "● "; color: #3ddc84; }
     #status.err::before { content: "● "; color: #e05555; }
 
@@ -102,7 +113,9 @@
     #sidebar {
       width: 160px;
       flex-shrink: 0;
-      border-right: 1px solid #1e3050;
+      border-right: 1px solid rgba(30,48,80,0.8);
+      background: rgba(10,14,26,0.85);
+      backdrop-filter: blur(4px);
       display: flex;
       flex-direction: column;
       overflow: hidden;
@@ -110,7 +123,7 @@
 
     #filter-bar {
       padding: 8px 12px;
-      border-bottom: 1px solid #1e3050;
+      border-bottom: 1px solid rgba(30,48,80,0.8);
       display: flex;
       align-items: center;
       gap: 8px;
@@ -125,7 +138,7 @@
     }
 
     #type-filter {
-      background: #0d1220;
+      background: rgba(13,18,32,0.9);
       color: #c8d8f0;
       border: 1px solid #2a4060;
       border-radius: 3px;
@@ -158,26 +171,27 @@
     }
 
     .body-item:hover { color: #7eb8b4; }
-
     .body-item.selected { color: #3ddc84; }
 
-    /* ── Content ── */
+    /* ── Right content area (transparent, passes clicks to canvas) ── */
     #content {
       flex: 1;
       padding: 20px;
-      overflow-y: auto;
       display: flex;
       justify-content: flex-end;
       align-items: flex-start;
+      pointer-events: none;
     }
 
     /* ── Detail panel ── */
     #detail-panel {
-      width: 280px;
-      border: 1px solid #1e3050;
-      background: #080c14;
+      width: 260px;
+      border: 1px solid rgba(30,48,80,0.8);
+      background: rgba(8,12,20,0.92);
+      backdrop-filter: blur(4px);
       padding: 16px 20px;
       display: none;
+      pointer-events: auto;
     }
 
     #detail-name {
@@ -203,112 +217,333 @@
       padding: 2px 0;
     }
 
-    .field-label {
+    .field-label { font-size: 11px; color: #2a7a50; letter-spacing: 0.04em; }
+    .field-value { font-size: 11px; color: #3ddc84; font-variant-numeric: tabular-nums; margin-left: 8px; }
+
+    /* ── 3D body labels (rendered by CSS2DRenderer) ── */
+    .body-label {
+      font-family: "Courier New", monospace;
       font-size: 11px;
-      color: #2a7a50;
-      letter-spacing: 0.04em;
+      color: rgba(80,120,160,0.9);
+      pointer-events: none;
+      white-space: nowrap;
+      padding-left: 5px;
     }
 
-    .field-value {
-      font-size: 11px;
-      color: #3ddc84;
-      font-variant-numeric: tabular-nums;
-      margin-left: 8px;
-    }
+    .body-label.lbl-selected { color: #3ddc84; }
+    .body-label.lbl-sun      { color: rgba(255,210,80,0.9); }
   </style>
 </head>
 <body>
-  <header>
-    <h1>Keplerian Telemetry</h1>
-    <div id="time-box">
-      <div id="time-label">Current Time</div>
-      <div id="current-time">—</div>
-    </div>
-    <div id="interval-box">
-      <span id="interval-label">Interval</span>
-      <select id="poll-interval">
-        <option value="1000">1 sec</option>
-        <option value="3000">3 sec</option>
-        <option value="5000">5 sec</option>
-        <option value="10000" selected>10 sec</option>
-      </select>
-    </div>
-    <div id="status">Connecting…</div>
-  </header>
 
-  <div class="layout">
-    <div id="sidebar">
-      <div id="filter-bar">
-        <label for="type-filter">Type</label>
-        <select id="type-filter"><option value="">All</option></select>
+  <div id="canvas-wrap"></div>
+
+  <div id="ui">
+    <header>
+      <h1>Keplerian Telemetry</h1>
+      <div id="time-box">
+        <div id="time-label">Current Time</div>
+        <div id="current-time">—</div>
       </div>
-      <div id="body-list"></div>
-    </div>
+      <div id="interval-box">
+        <span id="interval-label">Interval</span>
+        <select id="poll-interval">
+          <option value="1000">1 sec</option>
+          <option value="3000">3 sec</option>
+          <option value="5000">5 sec</option>
+          <option value="10000" selected>10 sec</option>
+        </select>
+      </div>
+      <div id="status">Connecting…</div>
+    </header>
 
-    <div id="content">
-      <div id="detail-panel">
-        <div id="detail-name"></div>
+    <div class="layout">
+      <div id="sidebar">
+        <div id="filter-bar">
+          <label for="type-filter">Type</label>
+          <select id="type-filter"><option value="">All</option></select>
+        </div>
+        <div id="body-list"></div>
+      </div>
 
-        <div class="section-title">Keplerian Elements</div>
-        <div class="field-row">
-          <span class="field-label">Epoch</span>
-          <span class="field-value" id="d-epoch">—</span>
-        </div>
-        <div class="field-row">
-          <span class="field-label">SMA</span>
-          <span class="field-value" id="d-sma">—</span>
-        </div>
-        <div class="field-row">
-          <span class="field-label">ECC</span>
-          <span class="field-value" id="d-ecc">—</span>
-        </div>
-        <div class="field-row">
-          <span class="field-label">INC  (°)</span>
-          <span class="field-value" id="d-inc">—</span>
-        </div>
-        <div class="field-row">
-          <span class="field-label">RAAN (°)</span>
-          <span class="field-value" id="d-raan">—</span>
-        </div>
-        <div class="field-row">
-          <span class="field-label">ARGP (°)</span>
-          <span class="field-value" id="d-argp">—</span>
-        </div>
-        <div class="field-row">
-          <span class="field-label">MA   (°)</span>
-          <span class="field-value" id="d-ma">—</span>
-        </div>
-
-        <div class="section-title">Cartesian Elements</div>
-        <div class="field-row">
-          <span class="field-label">POS X</span>
-          <span class="field-value" id="d-px">—</span>
-        </div>
-        <div class="field-row">
-          <span class="field-label">POS Y</span>
-          <span class="field-value" id="d-py">—</span>
-        </div>
-        <div class="field-row">
-          <span class="field-label">POS Z</span>
-          <span class="field-value" id="d-pz">—</span>
-        </div>
-        <div class="field-row">
-          <span class="field-label">VEL X</span>
-          <span class="field-value" id="d-vx">—</span>
-        </div>
-        <div class="field-row">
-          <span class="field-label">VEL Y</span>
-          <span class="field-value" id="d-vy">—</span>
-        </div>
-        <div class="field-row">
-          <span class="field-label">VEL Z</span>
-          <span class="field-value" id="d-vz">—</span>
+      <div id="content">
+        <div id="detail-panel">
+          <div id="detail-name"></div>
+          <div class="section-title">Keplerian Elements</div>
+          <div class="field-row"><span class="field-label">Epoch</span><span class="field-value" id="d-epoch">—</span></div>
+          <div class="field-row"><span class="field-label">SMA</span><span class="field-value" id="d-sma">—</span></div>
+          <div class="field-row"><span class="field-label">ECC</span><span class="field-value" id="d-ecc">—</span></div>
+          <div class="field-row"><span class="field-label">INC  (°)</span><span class="field-value" id="d-inc">—</span></div>
+          <div class="field-row"><span class="field-label">RAAN (°)</span><span class="field-value" id="d-raan">—</span></div>
+          <div class="field-row"><span class="field-label">ARGP (°)</span><span class="field-value" id="d-argp">—</span></div>
+          <div class="field-row"><span class="field-label">MA   (°)</span><span class="field-value" id="d-ma">—</span></div>
+          <div class="section-title">Cartesian Elements</div>
+          <div class="field-row"><span class="field-label">POS X</span><span class="field-value" id="d-px">—</span></div>
+          <div class="field-row"><span class="field-label">POS Y</span><span class="field-value" id="d-py">—</span></div>
+          <div class="field-row"><span class="field-label">POS Z</span><span class="field-value" id="d-pz">—</span></div>
+          <div class="field-row"><span class="field-label">VEL X</span><span class="field-value" id="d-vx">—</span></div>
+          <div class="field-row"><span class="field-label">VEL Y</span><span class="field-value" id="d-vy">—</span></div>
+          <div class="field-row"><span class="field-label">VEL Z</span><span class="field-value" id="d-vz">—</span></div>
         </div>
       </div>
     </div>
   </div>
 
-  <script>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+    // ── Constants ─────────────────────────────────────────────────────────────
+    const AU    = 1.496e11;        // 1 AU in meters
+    const SCALE = 1.0 / AU;       // Three.js units per meter (1 unit = 1 AU)
+
+    // ── Renderer setup ────────────────────────────────────────────────────────
+    const container = document.getElementById('canvas-wrap');
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x00000a, 1);
+    container.appendChild(renderer.domElement);
+
+    // CSS2D renderer for sharp text labels
+    const labelRenderer = new CSS2DRenderer();
+    labelRenderer.setSize(window.innerWidth, window.innerHeight);
+    labelRenderer.domElement.style.cssText = 'position:absolute;top:0;left:0;pointer-events:none;';
+    container.appendChild(labelRenderer.domElement);
+
+    // ── Scene / Camera / Controls ─────────────────────────────────────────────
+    const scene  = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.0001, 2000);
+    camera.position.set(0, 8, 10);
+    camera.lookAt(0, 0, 0);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.06;
+    controls.minDistance   = 0.001;
+    controls.maxDistance   = 500;
+
+    window.addEventListener('resize', () => {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      labelRenderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+    });
+
+    // ── Stars ─────────────────────────────────────────────────────────────────
+    {
+      const n   = 4000;
+      const pos = new Float32Array(n * 3);
+      for (let i = 0; i < n * 3; i++) pos[i] = (Math.random() - 0.5) * 600;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+      scene.add(new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffffff, size: 0.1, sizeAttenuation: true })));
+    }
+
+    // ── Scene groups ──────────────────────────────────────────────────────────
+    const orbitGroup = new THREE.Group();
+    const bodyGroup  = new THREE.Group();
+    scene.add(orbitGroup, bodyGroup);
+
+    function clearGroup(g) {
+      g.traverse(child => {
+        if (child.isCSS2DObject && child.element.parentNode) {
+          child.element.parentNode.removeChild(child.element);
+        }
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          (Array.isArray(child.material) ? child.material : [child.material]).forEach(m => m.dispose());
+        }
+      });
+      while (g.children.length) g.remove(g.children[0]);
+    }
+
+    // ── Coordinate conversion: Unreal Engine → Three.js ─────────────────────
+    // Unreal Engine: left-handed, Z-up (X=forward, Y=right, Z=up)
+    // Step 1: negate Y to convert left-handed → right-handed (Z-up)
+    // Step 2: Z-up → Y-up for Three.js:  (x, -y, z) → THREE(x, z, y)
+    function toThree(x, y, z) {
+      return new THREE.Vector3(x * SCALE, z * SCALE, y * SCALE);
+    }
+
+    // ICRF right-handed Z-up → Three.js (used internally by kepOrbitPoints)
+    function icrfToThree(x, y, z) {
+      return new THREE.Vector3(x * SCALE, z * SCALE, -y * SCALE);
+    }
+
+    // ── Keplerian orbit → array of Three.js points ────────────────────────────
+    // Rotation: perifocal (P,Q,W) → ICRF via R3(−Ω)·R1(−i)·R3(−ω)
+    function kepOrbitPoints(kep, parentPos, nPts = 200) {
+      const { a, e, i, raan, argp } = kep;
+      if (a == null || a <= 0)          return null;
+      if (e == null || e < 0 || e >= 1) return null;
+      if (i == null || raan == null || argp == null) return null;
+
+      const d2r = Math.PI / 180;
+      const ci = Math.cos(i    * d2r), si = Math.sin(i    * d2r);
+      const cO = Math.cos(raan * d2r), sO = Math.sin(raan * d2r);
+      const cw = Math.cos(argp * d2r), sw = Math.sin(argp * d2r);
+
+      // P-column (toward periapsis) and Q-column (90° ahead) of the DCM
+      const Px = cO*cw - sO*sw*ci,  Py = sO*cw + cO*sw*ci,  Pz = sw*si;
+      const Qx = -cO*sw - sO*cw*ci, Qy = -sO*sw + cO*cw*ci, Qz = cw*si;
+
+      const b  = a * Math.sqrt(1 - e * e);
+      // parentPos is in UE left-handed Z-up.
+      // Negate Y to convert to right-handed ICRF (same frame as the orbit formula output).
+      const ox =  (parentPos?.x ?? 0);
+      const oy = -(parentPos?.y ?? 0);
+      const oz =  (parentPos?.z ?? 0);
+
+      const pts = [];
+      for (let k = 0; k < nPts; k++) {
+        const E  = (2 * Math.PI * k) / nPts;
+        const xp = a * (Math.cos(E) - e);
+        const yp = b * Math.sin(E);
+        // Orbit point in right-handed ICRF + parent offset
+        pts.push(icrfToThree(Px*xp + Qx*yp + ox, Py*xp + Qy*yp + oy, Pz*xp + Qz*yp + oz));
+      }
+      return pts;
+    }
+
+    // ── Scene update ──────────────────────────────────────────────────────────
+    let bodySpheres = {};
+    let sunLight    = null;
+
+    function updateScene(objects) {
+      clearGroup(orbitGroup);
+      clearGroup(bodyGroup);
+      bodySpheres = {};
+
+      if (sunLight) { scene.remove(sunLight); sunLight.dispose(); sunLight = null; }
+
+      const byId = Object.fromEntries(objects.map(o => [o.id, o]));
+
+      objects.forEach(o => {
+        const pos      = o.cart?.pos;
+        const isSun    = o.name === 'Sun';
+        const isBary   = o.name === 'Barycenter';
+        const isSelected = o.id === selectedId;
+
+        // ── Body sphere ──
+        if (pos) {
+          const pos3 = toThree(pos.x, pos.y, pos.z);
+
+          let color, radius;
+          if (isSun) {
+            color = 0xffdd44; radius = 0.05;
+          } else if (isBary) {
+            color = 0x223344; radius = 0.008;
+          } else if (isSelected) {
+            color = 0x3ddc84; radius = 0.022;
+          } else {
+            color = 0x5588bb; radius = 0.015;
+          }
+
+          const mesh = new THREE.Mesh(
+            new THREE.SphereGeometry(radius, 8, 8),
+            new THREE.MeshBasicMaterial({ color })
+          );
+          mesh.position.copy(pos3);
+          mesh.userData.objectId = o.id;
+
+          // Sun glow layers
+          if (isSun) {
+            [[0.12, 0.18], [0.22, 0.07], [0.38, 0.025]].forEach(([r, op]) => {
+              mesh.add(new THREE.Mesh(
+                new THREE.SphereGeometry(r, 12, 12),
+                new THREE.MeshBasicMaterial({ color: 0xffdd44, transparent: true, opacity: op })
+              ));
+            });
+            sunLight = new THREE.PointLight(0xffcc44, 1.5, 25);
+            sunLight.position.copy(pos3);
+            scene.add(sunLight);
+          }
+
+          // Label
+          const div = document.createElement('div');
+          div.className = 'body-label' +
+            (isSun ? ' lbl-sun' : '') +
+            (isSelected ? ' lbl-selected' : '');
+          div.textContent = o.name ?? String(o.id);
+          const lbl = new CSS2DObject(div);
+          lbl.position.set(radius * 2, radius * 2, 0);
+          mesh.add(lbl);
+
+          bodyGroup.add(mesh);
+          bodySpheres[o.id] = mesh;
+        }
+
+        // ── Orbit line ──
+        if (o.kep && o.parentId != null) {
+          const parent    = byId[o.parentId];
+          const parentPos = parent?.cart?.pos ?? null;
+          const pts       = kepOrbitPoints(o.kep, parentPos);
+          if (pts) {
+            const geo = new THREE.BufferGeometry().setFromPoints(pts);
+            orbitGroup.add(new THREE.LineLoop(geo, new THREE.LineBasicMaterial({
+              color:       isSelected ? 0x3ddc84 : 0x1a3555,
+              transparent: true,
+              opacity:     isSelected ? 0.9 : 0.55
+            })));
+          }
+        }
+      });
+    }
+
+    // ── Raycasting: click on body sphere ──────────────────────────────────────
+    const raycaster = new THREE.Raycaster();
+    let pointerDownPos = null;
+
+    renderer.domElement.addEventListener('pointerdown', e => {
+      pointerDownPos = { x: e.clientX, y: e.clientY };
+    });
+
+    renderer.domElement.addEventListener('click', e => {
+      if (!pointerDownPos) return;
+      const dx = e.clientX - pointerDownPos.x;
+      const dy = e.clientY - pointerDownPos.y;
+      if (dx * dx + dy * dy > 25) return; // ignore drag (> 5px)
+
+      const rect  = renderer.domElement.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((e.clientX - rect.left) / rect.width) * 2 - 1,
+        -((e.clientY - rect.top) / rect.height) * 2 + 1
+      );
+      raycaster.setFromCamera(mouse, camera);
+      const hits = raycaster.intersectObjects(bodyGroup.children, false);
+      if (hits.length > 0) {
+        const id = hits[0].object.userData.objectId;
+        if (id != null) {
+          selectedId = id;
+          renderList();
+          showDetail();
+          updateScene(getFiltered());
+        }
+      }
+    });
+
+    // ── Animation loop ────────────────────────────────────────────────────────
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+      labelRenderer.render(scene, camera);
+    }
+    animate();
+
+    // ── UI logic ──────────────────────────────────────────────────────────────
     const statusEl       = document.getElementById("status");
     const currentTimeEl  = document.getElementById("current-time");
     const bodyListEl     = document.getElementById("body-list");
@@ -320,40 +555,35 @@
     let allObjects = [];
     let selectedId = null;
 
-    function fmtNum(n, digits) {
-      if (n == null) return "—";
-      return Number(n).toFixed(digits);
-    }
-
+    function fmtNum(n, d) { return n == null ? "—" : Number(n).toFixed(d); }
     function fmtEpoch(ep) {
       if (ep == null) return "—";
       return new Date(ep * 1000).toISOString().replace("T", " ").slice(0, 19);
     }
 
     function updateTypeOptions(objects) {
-      const current = typeFilterEl.value;
+      const cur   = typeFilterEl.value;
       const types = [...new Set(objects.map(o => o.type).filter(Boolean))].sort();
       typeFilterEl.innerHTML = '<option value="">All</option>' +
-        types.map(t => `<option value="${t}"${t === current ? " selected" : ""}>${t}</option>`).join("");
+        types.map(t => `<option${t === cur ? " selected" : ""} value="${t}">${t}</option>`).join("");
     }
 
     function getFiltered() {
-      const sel = typeFilterEl.value;
-      return sel ? allObjects.filter(o => o.type === sel) : allObjects;
+      const s = typeFilterEl.value;
+      return s ? allObjects.filter(o => o.type === s) : allObjects;
     }
 
     function renderList() {
-      const filtered = getFiltered();
-      bodyListEl.innerHTML = filtered.map(o => {
+      bodyListEl.innerHTML = getFiltered().map(o => {
         const cls = o.id === selectedId ? " selected" : "";
         return `<div class="body-item${cls}" data-id="${o.id}">${o.name ?? o.id}</div>`;
       }).join("");
-
       bodyListEl.querySelectorAll(".body-item").forEach(el => {
         el.addEventListener("click", () => {
           selectedId = Number(el.dataset.id);
           renderList();
           showDetail();
+          updateScene(getFiltered());
         });
       });
     }
@@ -361,7 +591,6 @@
     function showDetail() {
       const obj = allObjects.find(o => o.id === selectedId);
       if (!obj) { detailPanelEl.style.display = "none"; return; }
-
       detailPanelEl.style.display = "block";
       document.getElementById("detail-name").textContent = obj.name ?? obj.id;
       document.getElementById("d-epoch").textContent = fmtEpoch(obj.kep?.ep);
@@ -389,20 +618,24 @@
       updateTypeOptions(objects);
       renderList();
       if (selectedId != null) showDetail();
+      updateScene(getFiltered());
     }
 
-    typeFilterEl.addEventListener("change", renderList);
+    typeFilterEl.addEventListener("change", () => {
+      renderList();
+      updateScene(getFiltered());
+    });
 
     async function poll() {
       try {
-        const res = await fetch("/api/objects");
+        const res  = await fetch("/api/objects");
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        statusEl.className = "ok";
+        statusEl.className   = "ok";
         statusEl.textContent = "Live";
         render(data);
       } catch (e) {
-        statusEl.className = "err";
+        statusEl.className   = "err";
         statusEl.textContent = e.message;
       }
     }
