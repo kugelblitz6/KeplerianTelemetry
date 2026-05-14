@@ -1,7 +1,7 @@
 # KeplerianTelemetry
 
-宇宙物体のリアルタイムテレメトリを受信・管理する Spring Boot サーバ。  
-WebSocket 経由で Keplerian Space Discovery（以下KSD）から軌道情報（直交座標要素・ケプラー要素）を収集し、REST API で提供する。
+Keplerian Space Discovery（以下KSD）のテレメトリを受信するSpring Boot サーバ。  
+WebSocket 経由で KSDから各天体／宇宙機の軌道情報（カルテシアン要素・ケプラー要素）を収集し、REST API で提供する。
 
 本リポジトリはサーバおよび Web クライアントの**参照実装**である。WebSocket / REST API の仕様に準拠していれば、サーバ・クライアントともに独自実装に置き換えることができる。
 
@@ -214,8 +214,8 @@ KSD                                  サーバ
     {
       "id": 3,
       "cart": {
-        "position": { "x": 1.496e11, "y": 0.0, "z": 0.0 },
-        "velocity": { "x": 0.0,      "y": 29784.0, "z": 0.0 }
+        "pos": { "x": 1.496e11, "y": 0.0, "z": 0.0 },
+        "vel": { "x": 0.0,      "y": 29784.0, "z": 0.0 }
       },
       "kep": {
         "ep":   1609459200,
@@ -236,8 +236,8 @@ KSD                                  サーバ
 | `messageType` | string | 固定値 `"Telemetry"` |
 | `currentTime` | number | シミュレーション時刻（Unix 秒） |
 | `spaceObjects[].id` | number | オブジェクト ID |
-| `spaceObjects[].cart.position` | Vector3 | 位置（メートル） |
-| `spaceObjects[].cart.velocity` | Vector3 | 速度（m/s） |
+| `spaceObjects[].cart.pos` | Vector3 | 位置（メートル） |
+| `spaceObjects[].cart.vel` | Vector3 | 速度（m/s） |
 | `spaceObjects[].kep.ep` | number | エポック（Unix 秒） |
 | `spaceObjects[].kep.a` | number | 長半径（メートル） |
 | `spaceObjects[].kep.e` | number | 離心率 |
@@ -279,8 +279,8 @@ GET /api/objects
       "type": "planet",
       "parentId": null,
       "cart": {
-        "position": { "x": 0.0, "y": 0.0, "z": 0.0 },
-        "velocity": { "x": 0.0, "y": 0.0, "z": 0.0 }
+        "pos": { "x": 0.0, "y": 0.0, "z": 0.0 },
+        "vel": { "x": 0.0, "y": 0.0, "z": 0.0 }
       },
       "kep": {
         "ep": 1609459200,
@@ -298,8 +298,8 @@ GET /api/objects
       "type": "planet",
       "parentId": 1,
       "cart": {
-        "position": { "x": 1.496e11, "y": 0.0, "z": 0.0 },
-        "velocity": { "x": 0.0, "y": 29784.0, "z": 0.0 }
+        "pos": { "x": 1.496e11, "y": 0.0, "z": 0.0 },
+        "vel": { "x": 0.0, "y": 29784.0, "z": 0.0 }
       },
       "kep": {
         "ep": 1609459200,
@@ -336,8 +336,8 @@ GET /api/objects/3
   "type": "planet",
   "parentId": 1,
   "cart": {
-    "position": { "x": 1.496e11, "y": 0.0, "z": 0.0 },
-    "velocity": { "x": 0.0, "y": 29784.0, "z": 0.0 }
+    "pos": { "x": 1.496e11, "y": 0.0, "z": 0.0 },
+    "vel": { "x": 0.0, "y": 29784.0, "z": 0.0 }
   },
   "kep": {
     "ep": 1609459200,
@@ -371,8 +371,8 @@ GET /api/objects/3
 
 | フィールド | 型 | 説明 |
 |---|---|---|
-| `position` | Vector3 | 位置（メートル） |
-| `velocity` | Vector3 | 速度（m/s） |
+| `pos` | Vector3 | 位置（メートル） |
+| `vel` | Vector3 | 速度（m/s） |
 
 ### KeplerianElements
 

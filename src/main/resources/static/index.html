@@ -263,12 +263,12 @@
           <td>${o.name ?? '<span class="dim">—</span>'}</td>
           <td>${o.type ?? '<span class="dim">—</span>'}</td>
           <td>${o.parentId ?? '<span class="dim">—</span>'}</td>
-          <td>${fmt(o.cart?.position?.x)}</td>
-          <td>${fmt(o.cart?.position?.y)}</td>
-          <td>${fmt(o.cart?.position?.z)}</td>
-          <td>${fmt(o.cart?.velocity?.x)}</td>
-          <td>${fmt(o.cart?.velocity?.y)}</td>
-          <td>${fmt(o.cart?.velocity?.z)}</td>
+          <td>${fmt(o.cart?.pos?.x)}</td>
+          <td>${fmt(o.cart?.pos?.y)}</td>
+          <td>${fmt(o.cart?.pos?.z)}</td>
+          <td>${fmt(o.cart?.vel?.x)}</td>
+          <td>${fmt(o.cart?.vel?.y)}</td>
+          <td>${fmt(o.cart?.vel?.z)}</td>
           <td>${fmtEpoch(o.kep?.ep)}</td>
           <td>${fmt(o.kep?.a)}</td>
           <td>${fmtEcc(o.kep?.e)}</td>
