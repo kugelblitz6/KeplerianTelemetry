@@ -479,6 +479,7 @@
             e.stopPropagation();
             selectedId      = o.id;
             currentParentId = o.id === SUN_ID ? 0 : o.id;
+            focusOnBody(o.id);
             renderList();
             showDetail();
             updateScene(getSceneObjects());
@@ -534,6 +535,7 @@
         if (id != null) {
           selectedId      = id;
           currentParentId = id === SUN_ID ? 0 : id;
+          focusOnBody(id);
           renderList();
           showDetail();
           updateScene(getSceneObjects());
@@ -541,9 +543,25 @@
       }
     });
 
+    // ── Focus animation ───────────────────────────────────────────────────────
+    let targetGoal = null;
+
+    function focusOnBody(id) {
+      const obj = allObjects.find(o => o.id === id);
+      if (!obj?.cart?.pos) return;
+      targetGoal = toThree(obj.cart.pos.x, obj.cart.pos.y, obj.cart.pos.z);
+    }
+
     // ── Animation loop ────────────────────────────────────────────────────────
     function animate() {
       requestAnimationFrame(animate);
+      if (targetGoal) {
+        controls.target.lerp(targetGoal, 0.08);
+        if (controls.target.distanceTo(targetGoal) < 0.0001) {
+          controls.target.copy(targetGoal);
+          targetGoal = null;
+        }
+      }
       controls.update();
       renderer.render(scene, camera);
       labelRenderer.render(scene, camera);
@@ -607,6 +625,7 @@
         el.addEventListener("click", () => {
           selectedId      = Number(el.dataset.id);
           currentParentId = selectedId === SUN_ID ? 0 : selectedId;
+          focusOnBody(selectedId);
           renderList();
           showDetail();
           updateScene(getSceneObjects());
