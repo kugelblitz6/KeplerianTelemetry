@@ -225,7 +225,8 @@
       font-family: "Courier New", monospace;
       font-size: 11px;
       color: rgba(80,120,160,0.9);
-      pointer-events: none;
+      pointer-events: auto;
+      cursor: pointer;
       white-space: nowrap;
       padding-left: 5px;
     }
@@ -400,8 +401,6 @@
       const Qx = -cO*sw - sO*cw*ci, Qy = -sO*sw + cO*cw*ci, Qz = cw*si;
 
       const b  = a * Math.sqrt(1 - e * e);
-      // parentPos is in UE left-handed Z-up.
-      // Negate Y to convert to right-handed ICRF (same frame as the orbit formula output).
       const ox =  (parentPos?.x ?? 0);
       const oy = -(parentPos?.y ?? 0);
       const oz =  (parentPos?.z ?? 0);
@@ -411,7 +410,6 @@
         const E  = (2 * Math.PI * k) / nPts;
         const xp = a * (Math.cos(E) - e);
         const yp = b * Math.sin(E);
-        // Orbit point in right-handed ICRF + parent offset
         pts.push(icrfToThree(Px*xp + Qx*yp + ox, Py*xp + Qy*yp + oy, Pz*xp + Qz*yp + oz));
       }
       return pts;
@@ -477,6 +475,14 @@
             (isSun ? ' lbl-sun' : '') +
             (isSelected ? ' lbl-selected' : '');
           div.textContent = o.name ?? String(o.id);
+          div.addEventListener('click', e => {
+            e.stopPropagation();
+            selectedId      = o.id;
+            currentParentId = o.id === SUN_ID ? 0 : o.id;
+            renderList();
+            showDetail();
+            updateScene(getSceneObjects());
+          });
           const lbl = new CSS2DObject(div);
           lbl.position.set(radius * 2, radius * 2, 0);
           mesh.add(lbl);
@@ -526,10 +532,11 @@
       if (hits.length > 0) {
         const id = hits[0].object.userData.objectId;
         if (id != null) {
-          selectedId = id;
+          selectedId      = id;
+          currentParentId = id === SUN_ID ? 0 : id;
           renderList();
           showDetail();
-          updateScene(getFiltered());
+          updateScene(getSceneObjects());
         }
       }
     });
@@ -551,9 +558,12 @@
     const pollIntervalEl = document.getElementById("poll-interval");
     const detailPanelEl  = document.getElementById("detail-panel");
 
-    let timerId    = null;
-    let allObjects = [];
-    let selectedId = null;
+    let timerId         = null;
+    let allObjects      = [];
+    let selectedId      = null;
+    let currentParentId = 0;
+
+    const SUN_ID = 1;
 
     function fmtNum(n, d) { return n == null ? "—" : Number(n).toFixed(d); }
     function fmtEpoch(ep) {
@@ -573,17 +583,33 @@
       return s ? allObjects.filter(o => o.type === s) : allObjects;
     }
 
+    function getListObjects() {
+      return getFiltered().filter(o =>
+        o.id === SUN_ID ||
+        o.id === currentParentId ||
+        o.parentId === currentParentId
+      );
+    }
+
+    function getSceneObjects() {
+      const list    = getListObjects();
+      const listIds = new Set(list.map(o => o.id));
+      const roots   = getFiltered().filter(o => o.parentId === 0 && !listIds.has(o.id));
+      return [...list, ...roots];
+    }
+
     function renderList() {
-      bodyListEl.innerHTML = getFiltered().map(o => {
+      bodyListEl.innerHTML = getListObjects().map(o => {
         const cls = o.id === selectedId ? " selected" : "";
         return `<div class="body-item${cls}" data-id="${o.id}">${o.name ?? o.id}</div>`;
       }).join("");
       bodyListEl.querySelectorAll(".body-item").forEach(el => {
         el.addEventListener("click", () => {
-          selectedId = Number(el.dataset.id);
+          selectedId      = Number(el.dataset.id);
+          currentParentId = selectedId === SUN_ID ? 0 : selectedId;
           renderList();
           showDetail();
-          updateScene(getFiltered());
+          updateScene(getSceneObjects());
         });
       });
     }
@@ -618,12 +644,12 @@
       updateTypeOptions(objects);
       renderList();
       if (selectedId != null) showDetail();
-      updateScene(getFiltered());
+      updateScene(getSceneObjects());
     }
 
     typeFilterEl.addEventListener("change", () => {
       renderList();
-      updateScene(getFiltered());
+      updateScene(getSceneObjects());
     });
 
     async function poll() {
