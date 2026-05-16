@@ -176,19 +176,22 @@ KSD                                  サーバ
       "id": 1,
       "name": "Sun",
       "type": "planet",
-      "parentId": null
+      "parentId": null,
+      "radius": 695700000.0
     },
     {
       "id": 3,
       "name": "Earth",
       "type": "planet",
-      "parentId": 1
+      "parentId": 1,
+      "radius": 6371000.0
     },
     {
       "id": 5,
       "name": "ISS",
       "type": "satellite",
-      "parentId": 3
+      "parentId": 3,
+      "radius": 50.0
     }
   ]
 }
@@ -201,6 +204,7 @@ KSD                                  サーバ
 | `spaceObjects[].name` | string | オブジェクト名 |
 | `spaceObjects[].type` | string | 種別（`"planet"`, `"satellite"` 等） |
 | `spaceObjects[].parentId` | number \| null | 親オブジェクトの ID。なければ `null` |
+| `spaceObjects[].radius` | number | 天体の半径（メートル） |
 
 #### Telemetry
 
@@ -278,6 +282,7 @@ GET /api/objects
       "name": "Sun",
       "type": "planet",
       "parentId": null,
+      "radius": 695700000.0,
       "cart": {
         "pos": { "x": 0.0, "y": 0.0, "z": 0.0 },
         "vel": { "x": 0.0, "y": 0.0, "z": 0.0 }
@@ -297,6 +302,7 @@ GET /api/objects
       "name": "Earth",
       "type": "planet",
       "parentId": 1,
+      "radius": 6371000.0,
       "cart": {
         "pos": { "x": 1.496e11, "y": 0.0, "z": 0.0 },
         "vel": { "x": 0.0, "y": 29784.0, "z": 0.0 }
@@ -335,6 +341,7 @@ GET /api/objects/3
   "name": "Earth",
   "type": "planet",
   "parentId": 1,
+  "radius": 6371000.0,
   "cart": {
     "pos": { "x": 1.496e11, "y": 0.0, "z": 0.0 },
     "vel": { "x": 0.0, "y": 29784.0, "z": 0.0 }
@@ -401,5 +408,6 @@ GET /api/objects/3
 | `name` | string | オブジェクト名 |
 | `type` | string | 種別 |
 | `parentId` | Long \| null | 親オブジェクト ID |
+| `radius` | Double \| null | 天体の半径（メートル） |
 | `cart` | CartesianElements | 直交座標要素 |
 | `kep` | KeplerianElements | ケプラー要素 |

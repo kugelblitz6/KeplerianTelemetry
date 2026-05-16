@@ -228,11 +228,27 @@
       pointer-events: auto;
       cursor: pointer;
       white-space: nowrap;
-      padding-left: 5px;
+      text-align: center;
+      transform: translate(-50%, calc(-100% - 14px));
     }
 
     .body-label.lbl-selected { color: #3ddc84; }
     .body-label.lbl-sun      { color: rgba(255,210,80,0.9); }
+
+    /* ── Body position markers (constant screen size) ── */
+    .body-marker {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 1.5px solid rgba(85,136,187,0.75);
+      pointer-events: auto;
+      cursor: pointer;
+      transform: translate(-50%, -50%);
+      box-sizing: border-box;
+    }
+
+    .body-marker.marker-selected { border-color: #3ddc84; border-width: 2px; }
+    .body-marker.marker-sun      { border-color: rgba(255,210,80,0.85); width: 26px; height: 26px; }
   </style>
 </head>
 <body>
@@ -429,37 +445,73 @@
       const byId = Object.fromEntries(objects.map(o => [o.id, o]));
 
       objects.forEach(o => {
-        const pos      = o.cart?.pos;
-        const isSun    = o.name === 'Sun';
-        const isBary   = o.name === 'Barycenter';
+        const pos        = o.cart?.pos;
+        const isSun      = o.name === 'Sun';
+        const isBary     = o.name === 'Barycenter';
         const isSelected = o.id === selectedId;
 
-        // ── Body sphere ──
+        // ── Body ──
         if (pos) {
           const pos3 = toThree(pos.x, pos.y, pos.z);
 
-          let color, radius;
-          if (isSun) {
-            color = 0xffdd44; radius = 0.05;
-          } else if (isBary) {
-            color = 0x223344; radius = 0.008;
-          } else if (isSelected) {
-            color = 0x3ddc84; radius = 0.022;
-          } else {
-            color = 0x5588bb; radius = 0.015;
+          // Actual physical radius in Three.js units (1 unit = 1 AU)
+          const physRadius = (o.radius != null && o.radius > 0) ? o.radius * SCALE : 0;
+
+          // Fixed-size ring marker radius for visibility
+          const markerR = isSun ? 0.07 : isBary ? 0.01 : (isSelected ? 0.026 : 0.020);
+
+          let color;
+          if (isSun)           color = 0xffdd44;
+          else if (isBary)     color = 0x223344;
+          else if (isSelected) color = 0x3ddc84;
+          else                 color = 0x5588bb;
+
+          // Container group (holds sphere + hit sphere + ring + label)
+          const bodyObj = new THREE.Group();
+          bodyObj.position.copy(pos3);
+          bodyObj.userData.objectId = o.id;
+
+          // Visible sphere at actual physical radius
+          if (physRadius > 0) {
+            bodyObj.add(new THREE.Mesh(
+              new THREE.SphereGeometry(physRadius, 8, 8),
+              new THREE.MeshBasicMaterial({ color })
+            ));
           }
 
-          const mesh = new THREE.Mesh(
-            new THREE.SphereGeometry(radius, 8, 8),
-            new THREE.MeshBasicMaterial({ color })
+          // Invisible hit sphere at marker radius (for raycasting / click)
+          const hitSphere = new THREE.Mesh(
+            new THREE.SphereGeometry(markerR, 8, 8),
+            new THREE.MeshBasicMaterial({ visible: false })
           );
-          mesh.position.copy(pos3);
-          mesh.userData.objectId = o.id;
+          bodyObj.add(hitSphere);
+
+          // CSS2D circle marker — constant screen size regardless of zoom
+          // Wrapper receives renderer's inline transform; inner div keeps its own CSS transform
+          const markerWrapper = document.createElement('div');
+          markerWrapper.style.pointerEvents = 'none';
+          const markerDiv = document.createElement('div');
+          markerDiv.className = 'body-marker' +
+            (isSun ? ' marker-sun' : '') +
+            (isSelected ? ' marker-selected' : '');
+          markerDiv.addEventListener('click', e => {
+            e.stopPropagation();
+            selectedId      = o.id;
+            currentParentId = o.id === SUN_ID ? 0 : o.id;
+            focusOnBody(o.id);
+            renderList();
+            showDetail();
+            updateScene(getSceneObjects());
+          });
+          markerWrapper.appendChild(markerDiv);
+          const markerObj = new CSS2DObject(markerWrapper);
+          markerObj.position.set(0, 0, 0);
+          bodyObj.add(markerObj);
 
           // Sun glow layers
           if (isSun) {
             [[0.12, 0.18], [0.22, 0.07], [0.38, 0.025]].forEach(([r, op]) => {
-              mesh.add(new THREE.Mesh(
+              bodyObj.add(new THREE.Mesh(
                 new THREE.SphereGeometry(r, 12, 12),
                 new THREE.MeshBasicMaterial({ color: 0xffdd44, transparent: true, opacity: op })
               ));
@@ -469,7 +521,9 @@
             scene.add(sunLight);
           }
 
-          // Label
+          // Label — wrapper receives renderer's inline transform; inner div uses CSS transform
+          const labelWrapper = document.createElement('div');
+          labelWrapper.style.pointerEvents = 'none';
           const div = document.createElement('div');
           div.className = 'body-label' +
             (isSun ? ' lbl-sun' : '') +
@@ -484,12 +538,13 @@
             showDetail();
             updateScene(getSceneObjects());
           });
-          const lbl = new CSS2DObject(div);
-          lbl.position.set(radius * 2, radius * 2, 0);
-          mesh.add(lbl);
+          labelWrapper.appendChild(div);
+          const lbl = new CSS2DObject(labelWrapper);
+          lbl.position.set(0, 0, 0);
+          bodyObj.add(lbl);
 
-          bodyGroup.add(mesh);
-          bodySpheres[o.id] = mesh;
+          bodyGroup.add(bodyObj);
+          bodySpheres[o.id] = bodyObj;
         }
 
         // ── Orbit line ──
@@ -529,9 +584,11 @@
         -((e.clientY - rect.top) / rect.height) * 2 + 1
       );
       raycaster.setFromCamera(mouse, camera);
-      const hits = raycaster.intersectObjects(bodyGroup.children, false);
+      const hits = raycaster.intersectObjects(bodyGroup.children, true);
       if (hits.length > 0) {
-        const id = hits[0].object.userData.objectId;
+        let node = hits[0].object;
+        while (node && node.userData.objectId == null) node = node.parent;
+        const id = node?.userData.objectId;
         if (id != null) {
           selectedId      = id;
           currentParentId = id === SUN_ID ? 0 : id;

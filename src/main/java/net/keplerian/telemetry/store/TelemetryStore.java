@@ -28,14 +28,14 @@ public class TelemetryStore {
                              net.keplerian.telemetry.model.CartesianElements cart,
                              net.keplerian.telemetry.model.KeplerianElements kep) {
         objects.merge(id,
-                new SpaceObject(id, null, null, null, cart, kep),
+                new SpaceObject(id, null, null, null, null, cart, kep),
                 (existing, incoming) -> existing.withTelemetry(cart, kep));
     }
 
     public void putInfo(SpaceObjectInfo info) {
         objects.merge(info.id(),
-                new SpaceObject(info.id(), info.name(), info.type(), info.parentId(), null, null),
-                (existing, incoming) -> existing.withInfo(info.name(), info.type(), info.parentId()));
+                new SpaceObject(info.id(), info.name(), info.type(), info.parentId(), info.radius(), null, null),
+                (existing, incoming) -> existing.withInfo(info.name(), info.type(), info.parentId(), info.radius()));
     }
 
     public Collection<SpaceObject> getAll() {
