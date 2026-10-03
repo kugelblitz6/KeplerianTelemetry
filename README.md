@@ -96,6 +96,7 @@ target\dist\KeplerianTelemetry\start.bat
 - 登録オブジェクト数・シミュレーション時刻のリアルタイム表示
 - タイプ別フィルタ
 - 直交座標要素・ケプラー要素を含む一覧テーブル
+- KSD 本体と同じ軌道線の描画（`orbitRev` が変わったオブジェクトだけ `?orbits=true` で取り直す）
 - REST API を 10 秒ごとにポーリングして自動更新
 
 ### カスタムクライアントの実装
@@ -104,6 +105,7 @@ target\dist\KeplerianTelemetry\start.bat
 
 - **データ取得:** `GET /api/objects` を任意の間隔でポーリングする
 - **単体取得:** `GET /api/objects/{id}` で特定オブジェクトのみ取得できる
+- **軌道線:** 通常のレスポンスには軌道線の版 `orbitRev` だけが入る。初回と、`orbitRev` が前回取得時から変わったオブジェクトだけ `?orbits=true` を付けて軌道線（`orbitLegs`）を取得する。描画は「親天体の `pos` ＋ 各点」を結ぶだけでよい（[軌道線の描き方](#軌道線の描き方)）
 - **ポーリングの副作用:** `GET /api/objects` を呼び出すたびにサーバが KSD へ `QueryTelemetry` を送信するため、ポーリング間隔がそのままテレメトリの更新頻度になる
 
 WebSocket への直接接続は不要で、REST API だけで完結する。`index.html` を `static/` フォルダに置けばサーバから配信されるが、別ホストで動かして CORS なしで利用することも可能（サーバは全オリジンを許可している）。
@@ -135,6 +137,9 @@ KSD                                  サーバ
     :  び出しごとに QueryTelemetry が    :
     :  送信される                        :
 ```
+
+KSD は軌道線（`orbitRev` / `orbitLegs`）を、**接続後の最初の `Telemetry` では全オブジェクト分**、以降は**前回送った内容から変わったオブジェクトだけ**送る。
+サーバは受け取った軌道線を保持し、軌道線の付いていない `Telemetry` を受けても消さないこと。
 
 ---
 
@@ -209,6 +214,7 @@ KSD                                  サーバ
 #### Telemetry
 
 各オブジェクトの現在の軌道状態を送信する。
+軌道線（`orbitRev` / `orbitLegs`）は変わったオブジェクトにだけ付く（上記「接続シーケンス」参照）。
 
 ```json
 {
@@ -229,7 +235,16 @@ KSD                                  サーバ
         "raan": 0.0,
         "argp": 102.9373,
         "ma":   100.4646
-      }
+      },
+      "orbitRev": 3735928559,
+      "orbitLegs": [
+        {
+          "parentId": 1,
+          "segments": [
+            [[-149600000000, 0, 0], [-149577215362, -2610800215, 0]]
+          ]
+        }
+      ]
     }
   ]
 }
@@ -241,7 +256,7 @@ KSD                                  サーバ
 | `currentTime` | number | シミュレーション時刻（Unix 秒） |
 | `spaceObjects[].id` | number | オブジェクト ID |
 | `spaceObjects[].cart.pos` | Vector3 | 位置（メートル） |
-| `spaceObjects[].cart.vel` | Vector3 | 速度（m/s） |
+| `spaceObjects[].cart.vel` | Vector3 | 親天体に対する相対速度（m/s）。座標軸は `pos` と同じ |
 | `spaceObjects[].kep.ep` | number | エポック（Unix 秒） |
 | `spaceObjects[].kep.a` | number | 長半径（メートル） |
 | `spaceObjects[].kep.e` | number | 離心率 |
@@ -249,6 +264,10 @@ KSD                                  サーバ
 | `spaceObjects[].kep.raan` | number | 昇交点赤経（度） |
 | `spaceObjects[].kep.argp` | number | 近点引数（度） |
 | `spaceObjects[].kep.ma` | number | 平均近点角（度） |
+| `spaceObjects[].orbitRev` | number | 軌道線の版（省略可）。内容が変わると変わる。等しいかどうかの比較にだけ使う |
+| `spaceObjects[].orbitLegs` | OrbitLeg[] | 軌道線（省略可。`orbitRev` と同時にだけ付く）。空配列は「軌道線なし」 |
+
+> **ケプラー要素について:** `kep` は親天体の赤道面を基準とした軌道要素で、`pos` とは座標系が異なる（KSD 内部で親天体の赤道傾斜などの変換を経て `pos` になる）。軌道線は `kep` から計算せず、`orbitLegs` を使うこと。
 
 > **注意:** KSDが送出する `nan`、`-nan(ind)`、`inf`、`-inf` 等の非数値はサーバ側で JSON の `null` に変換される。
 
@@ -269,7 +288,12 @@ KSD                                  サーバ
 
 ```
 GET /api/objects
+GET /api/objects?orbits=true
 ```
+
+| パラメータ | 既定値 | 説明 |
+|---|---|---|
+| `orbits` | `false` | `true` のとき各オブジェクトに軌道線（`orbitLegs`）を含める。`false` のときは `orbitRev` だけを返す |
 
 **レスポンス（200 OK）**
 
@@ -325,13 +349,18 @@ GET /api/objects
 
 ### GET /api/objects/{id}
 
-指定 ID の宇宙オブジェクトを取得する。
+指定 ID の宇宙オブジェクトを取得する。KSD への問い合わせは行わず、サーバが保持している値を返す。
 
 **リクエスト**
 
 ```
 GET /api/objects/3
+GET /api/objects/3?orbits=true
 ```
+
+| パラメータ | 既定値 | 説明 |
+|---|---|---|
+| `orbits` | `false` | `true` のとき軌道線（`orbitLegs`）を含める |
 
 **レスポンス（200 OK）**
 
@@ -378,8 +407,8 @@ GET /api/objects/3
 
 | フィールド | 型 | 説明 |
 |---|---|---|
-| `pos` | Vector3 | 位置（メートル） |
-| `vel` | Vector3 | 速度（m/s） |
+| `pos` | Vector3 | 位置（メートル）。太陽系の座標原点からの絶対座標 |
+| `vel` | Vector3 | 親天体に対する相対速度（m/s）。座標軸は `pos` と同じ |
 
 ### KeplerianElements
 
@@ -411,3 +440,24 @@ GET /api/objects/3
 | `radius` | Double \| null | 天体の半径（メートル） |
 | `cart` | CartesianElements | 直交座標要素 |
 | `kep` | KeplerianElements | ケプラー要素 |
+| `orbitRev` | number \| null | 軌道線の版。未受信なら `null` |
+| `orbitLegs` | OrbitLeg[] | 軌道線。`?orbits=true` のときだけ含まれる |
+
+### OrbitLeg
+
+軌道線の1区間。SOI（作用圏）の遷移を含む軌道では、遷移ごとに別のレッグになる。
+
+| フィールド | 型 | 説明 |
+|---|---|---|
+| `parentId` | number | このレッグの親天体 ID（オブジェクト自身の `parentId` と異なることがある） |
+| `segments` | number[][][] | 途切れずに結ぶ点列 `[[x, y, z], ...]` の配列。点は親天体の `pos` からの相対位置（メートル、1m 単位に丸め済み、座標軸は `pos` と同じ） |
+
+### 軌道線の描き方
+
+各 `segments` の点列を、`parentId` の天体の `pos` を足して折れ線（閉じない）で結ぶ。
+KSD 本体の描画と同じ線になり、オブジェクトの `pos` はこの線上に乗る。
+
+- 点にはKSD 側で必要な座標変換（親天体の赤道傾斜、打ち上げ・弾道飛行中の対地座標系表示など）が適用済み
+- 楕円軌道は始点と終点が同じ点なので、閉じた線になる
+- 親天体が受信データに無い場合、`parentId` が `0`（太陽系共通重心）なら原点とみなす
+- `pos` と同様、座標系は Unreal Engine の左手系（Z が上）

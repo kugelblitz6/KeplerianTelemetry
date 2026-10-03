@@ -394,41 +394,42 @@
       return new THREE.Vector3(x * SCALE, z * SCALE, y * SCALE);
     }
 
-    // ICRF right-handed Z-up → Three.js (used internally by kepOrbitPoints)
-    function icrfToThree(x, y, z) {
-      return new THREE.Vector3(x * SCALE, z * SCALE, -y * SCALE);
+    // ── Orbit lines (sent by KSD as point arrays) ─────────────────────────────
+    // orbitCache: id → { rev, legs }. Each leg's points are relative to its parent body's pos
+    // (same axes as pos), so a line is drawn as: parent pos + point.
+    const orbitCache = new Map();
+
+    function storeOrbit(o) {
+      if (o?.orbitRev != null && Array.isArray(o.orbitLegs)) {
+        orbitCache.set(o.id, { rev: o.orbitRev, legs: o.orbitLegs });
+      }
     }
 
-    // ── Keplerian orbit → array of Three.js points ────────────────────────────
-    // Rotation: perifocal (P,Q,W) → ICRF via R3(−Ω)·R1(−i)·R3(−ω)
-    function kepOrbitPoints(kep, parentPos, nPts = 200) {
-      const { a, e, i, raan, argp } = kep;
-      if (a == null || a <= 0)          return null;
-      if (e == null || e < 0 || e >= 1) return null;
-      if (i == null || raan == null || argp == null) return null;
+    // Fetch orbit lines only for objects whose orbitRev changed since we last fetched them
+    async function refreshOrbits(objects) {
+      const stale = objects.filter(o => o.orbitRev != null && orbitCache.get(o.id)?.rev !== o.orbitRev);
+      await Promise.all(stale.map(async o => {
+        const res = await fetch(`/api/objects/${o.id}?orbits=true`);
+        if (res.ok) storeOrbit(await res.json());
+      }));
+    }
 
-      const d2r = Math.PI / 180;
-      const ci = Math.cos(i    * d2r), si = Math.sin(i    * d2r);
-      const cO = Math.cos(raan * d2r), sO = Math.sin(raan * d2r);
-      const cw = Math.cos(argp * d2r), sw = Math.sin(argp * d2r);
-
-      // P-column (toward periapsis) and Q-column (90° ahead) of the DCM
-      const Px = cO*cw - sO*sw*ci,  Py = sO*cw + cO*sw*ci,  Pz = sw*si;
-      const Qx = -cO*sw - sO*cw*ci, Qy = -sO*sw + cO*cw*ci, Qz = cw*si;
-
-      const b  = a * Math.sqrt(1 - e * e);
-      const ox =  (parentPos?.x ?? 0);
-      const oy = -(parentPos?.y ?? 0);
-      const oz =  (parentPos?.z ?? 0);
-
-      const pts = [];
-      for (let k = 0; k < nPts; k++) {
-        const E  = (2 * Math.PI * k) / nPts;
-        const xp = a * (Math.cos(E) - e);
-        const yp = b * Math.sin(E);
-        pts.push(icrfToThree(Px*xp + Qx*yp + ox, Py*xp + Qy*yp + oy, Pz*xp + Qz*yp + oz));
-      }
-      return pts;
+    function orbitLineObjects(legs, byId, material) {
+      const lines = [];
+      legs.forEach(leg => {
+        // Barycenter (id 0) is not sent by KSD; it sits at the origin
+        const parentPos = byId[leg.parentId]?.cart?.pos ?? (leg.parentId === 0 ? { x: 0, y: 0, z: 0 } : null);
+        if (!parentPos) return;
+        leg.segments.forEach(seg => {
+          // Keep vertices parent-relative and place the line at the parent:
+          // large absolute coordinates would lose precision in the GPU's float32 buffers
+          const pts  = seg.map(([x, y, z]) => toThree(x, y, z));
+          const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), material);
+          line.position.copy(toThree(parentPos.x, parentPos.y, parentPos.z));
+          lines.push(line);
+        });
+      });
+      return lines;
     }
 
     // ── Scene update ──────────────────────────────────────────────────────────
@@ -442,7 +443,8 @@
 
       if (sunLight) { scene.remove(sunLight); sunLight.dispose(); sunLight = null; }
 
-      const byId = Object.fromEntries(objects.map(o => [o.id, o]));
+      // Look up parents among all objects: a leg's parent may be filtered out of the scene
+      const allById = Object.fromEntries(allObjects.map(o => [o.id, o]));
 
       objects.forEach(o => {
         const pos        = o.cart?.pos;
@@ -548,18 +550,14 @@
         }
 
         // ── Orbit line ──
-        if (o.kep && o.parentId != null) {
-          const parent    = byId[o.parentId];
-          const parentPos = parent?.cart?.pos ?? null;
-          const pts       = kepOrbitPoints(o.kep, parentPos);
-          if (pts) {
-            const geo = new THREE.BufferGeometry().setFromPoints(pts);
-            orbitGroup.add(new THREE.LineLoop(geo, new THREE.LineBasicMaterial({
-              color:       isSelected ? 0x3ddc84 : 0x1a3555,
-              transparent: true,
-              opacity:     isSelected ? 0.9 : 0.55
-            })));
-          }
+        const orbit = orbitCache.get(o.id);
+        if (orbit) {
+          const material = new THREE.LineBasicMaterial({
+            color:       isSelected ? 0x3ddc84 : 0x1a3555,
+            transparent: true,
+            opacity:     isSelected ? 0.9 : 0.55
+          });
+          orbitLineObjects(orbit.legs, allById, material).forEach(line => orbitGroup.add(line));
         }
       });
     }
@@ -736,6 +734,7 @@
         const res  = await fetch("/api/objects");
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        await refreshOrbits(data.objects ?? []);
         statusEl.className   = "ok";
         statusEl.textContent = "Live";
         render(data);
